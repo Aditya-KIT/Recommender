@@ -124,41 +124,61 @@ function App() {
   }, [messages, loading]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || loading) return;
+  e.preventDefault();
 
-    setError("");
-    const userMsg = { role: "user", content: text };
+  const text = input.trim();
 
-    // Only send role=user or role=assistant messages (skip the initial assistant greeting
-    // that was never actually sent to the API). We filter system and convert all messages.
-    const apiMessages = [
-      ...messages.filter((m) => m.role === "user" || m.role === "assistant"),
-      userMsg,
-    ];
+  if (!text || loading) return;
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setLoading(true);
+  setError("");
 
-    try {
-      const data = await sendChat(apiMessages);
-      const assistantMsg = { role: "assistant", content: data.reply };
-      setMessages((prev) => [...prev, assistantMsg]);
-      setRecommendations(data.recommendations || []);
-    } catch (err) {
-      setError(
-        "Could not reach the backend. Make sure the FastAPI server is running on http://localhost:8000."
-      );
-      // Remove the user message if the call failed so they can retry
-      setMessages((prev) => prev.slice(0, -1));
-      setInput(text);
-    } finally {
-      setLoading(false);
-      inputRef.current?.focus();
-    }
+  const userMsg = {
+    role: "user",
+    content: text,
   };
+
+  const apiMessages = [
+    ...messages.filter(
+      (m) => m.role === "user" || m.role === "assistant"
+    ),
+    userMsg,
+  ];
+
+  setMessages((prev) => [...prev, userMsg]);
+
+  setInput("");
+
+  setLoading(true);
+
+  try {
+    const data = await sendChat(apiMessages);
+
+    const assistantMsg = {
+      role: "assistant",
+      content: data.reply,
+    };
+
+    setMessages((prev) => [...prev, assistantMsg]);
+
+    setRecommendations(data.recommendations || []);
+  } catch (err) {
+    console.error("Backend connection error:", err);
+
+    setError(
+      `Could not reach the backend. Please check your deployed Render backend URL.`
+    );
+
+    // Remove failed user message
+    setMessages((prev) => prev.slice(0, -1));
+
+    // Restore input text
+    setInput(text);
+  } finally {
+    setLoading(false);
+
+    inputRef.current?.focus();
+  }
+};
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
